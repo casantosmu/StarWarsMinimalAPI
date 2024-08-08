@@ -1,0 +1,29 @@
+### GET PEOPLE
+GET http://localhost:5272/people
+Accept: application/json
+
+### GET PERSON
+GET http://localhost:5272/people/3
+Accept: application/json
+
+### ADD PERSON
+POST http://localhost:5272/people
+Content-Type: application/json
+
+{
+    "firstName": "Darth",
+    "lastName": "Sidious"
+}
+
+### UPDATE PERSON
+PUT http://localhost:5272/people/3
+Content-Type: application/json
+
+{
+    "firstName": "Sheev",
+    "lastName": "Palpatine"
+}
+
+### REMOVE PERSON
+DELETE http://localhost:5272/people/3
+Accept: application/json

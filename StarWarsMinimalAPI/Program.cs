@@ -1,5 +1,11 @@
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddProblemDetails();
+builder.Services.Configure<RouteOptions>(o => 
+{
+    o.LowercaseUrls = true;
+    o.AppendTrailingSlash = false;
+    o.LowercaseQueryStrings = false;
+});
 
 var app = builder.Build();
 
@@ -19,26 +25,33 @@ var people = new Dictionary<int, Person>
 
 var peopleApi = app.MapGroup("/people");
 
-peopleApi.MapGet("/", () =>
-    people.Select(p => new { id = p.Key, p.Value.FirstName, p.Value.LastName })
-);
+peopleApi
+    .MapGet("/", () => people.Select(p => new { id = p.Key, p.Value.FirstName, p.Value.LastName }))
+    .WithName("getPeople");
 
-peopleApi.MapGet("/{id}", (int id) =>
-    people.TryGetValue(id, out var person)
-        ? TypedResults.Ok(new { id, person.FirstName, person.LastName })
-        : Results.Problem(statusCode: 404)
-);
+peopleApi
+    .MapGet("/{id}", (int id) =>
+        people.TryGetValue(id, out var person)
+            ? TypedResults.Ok(new { id, person.FirstName, person.LastName })
+            : Results.Problem(statusCode: 404)
+    )
+    .WithName("getPerson");
 
-peopleApi.MapPost("/", (Person person) =>
+peopleApi
+    .MapPost("/", (Person person, LinkGenerator links) =>
     {
         var id = people.Count == 0 ? 0 : people.Keys.Max() + 1;
         people.Add(id, person);
 
-        return TypedResults.Created($"/people/{id}", new { id, person.FirstName, person.LastName });
-    })
-    .AddEndpointFilterFactory(ValidationHelper.ValidatePersonFactory);
+        var link = links.GetPathByName("getPerson", new { id });
 
-peopleApi.MapPut("/{id}", (int id, Person person) =>
+        return TypedResults.Created(link, new { id, person.FirstName, person.LastName });
+    })
+    .AddEndpointFilterFactory(ValidationHelper.ValidatePersonFactory)
+    .WithName("addPerson");
+
+peopleApi
+    .MapPut("/{id}", (int id, Person person) =>
     {
         if (!people.ContainsKey(id))
         {
@@ -49,13 +62,16 @@ peopleApi.MapPut("/{id}", (int id, Person person) =>
 
         return TypedResults.NoContent();
     })
-    .AddEndpointFilterFactory(ValidationHelper.ValidatePersonFactory);
+    .AddEndpointFilterFactory(ValidationHelper.ValidatePersonFactory)
+    .WithName("updatePerson");
 
-peopleApi.MapDelete("/{id}", (int id) =>
-    people.Remove(id)
-        ? TypedResults.NoContent()
-        : Results.Problem(statusCode: 404)
-);
+peopleApi
+    .MapDelete("/{id}", (int id) =>
+        people.Remove(id)
+            ? TypedResults.NoContent()
+            : Results.Problem(statusCode: 404)
+    )
+    .WithName("removePerson");
 
 app.Run();
 

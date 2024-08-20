@@ -1,6 +1,8 @@
+using System.ComponentModel.DataAnnotations;
+
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddProblemDetails();
-builder.Services.Configure<RouteOptions>(o => 
+builder.Services.Configure<RouteOptions>(o =>
 {
     o.LowercaseUrls = true;
     o.AppendTrailingSlash = false;
@@ -47,7 +49,7 @@ peopleApi
 
         return TypedResults.Created(link, new { id, person.FirstName, person.LastName });
     })
-    .AddEndpointFilterFactory(ValidationHelper.ValidatePersonFactory)
+    .WithParameterValidation()
     .WithName("addPerson");
 
 peopleApi
@@ -62,7 +64,7 @@ peopleApi
 
         return TypedResults.NoContent();
     })
-    .AddEndpointFilterFactory(ValidationHelper.ValidatePersonFactory)
+    .WithParameterValidation()
     .WithName("updatePerson");
 
 peopleApi
@@ -75,46 +77,12 @@ peopleApi
 
 app.Run();
 
-public record Person(string FirstName, string LastName);
+public record Person(
+    [Required]
+    [Display(Name = "First name")]
+    string FirstName,
 
-class ValidationHelper
-{
-    internal static EndpointFilterDelegate ValidatePersonFactory(
-        EndpointFilterFactoryContext context,
-        EndpointFilterDelegate next
-    )
-    {
-        var parameters = context.MethodInfo.GetParameters();
-        int? personPosition = null;
-        for (var i = 0; i < parameters.Length; i++)
-        {
-            if (parameters[i].ParameterType == typeof(Person))
-            {
-                personPosition = i;
-                break;
-            }
-        }
-
-        if (!personPosition.HasValue)
-        {
-            throw new InvalidOperationException();
-        }
-
-        return async (invocationContext) =>
-        {
-            var person = invocationContext.GetArgument<Person>(personPosition.Value);
-
-            var errors = new Dictionary<string, string[]>();
-            if (string.IsNullOrWhiteSpace(person.FirstName))
-            {
-                errors.Add("firstName", ["Invalid format: Null or empty"]);
-            }
-            if (string.IsNullOrWhiteSpace(person.LastName))
-            {
-                errors.Add("lastName", ["Invalid format: Null or empty"]);
-            }
-
-            return errors.Count == 0 ? await next(invocationContext) : Results.ValidationProblem(errors);
-        };
-    }
-}
+    [Required]
+    [Display(Name = "Last name")]
+    string LastName
+);
